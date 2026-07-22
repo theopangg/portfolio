@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theo — counsel by day, builder by night</title>
+<meta name="description" content="Personal site of Theo: in-house legal counsel, side-project builder, occasional podcaster, perpetual explorer.">
+
+<!-- ============================================================
+     HOW TO MAINTAIN THIS SITE
+     ============================================================
+     This is a single self-contained file. No build step needed.
+
+     PREVIEW LOCALLY
+       Just open this file in a browser, or run:
+         python3 -m http.server 8000
+       and visit http://localhost:8000
+
+     EDIT THE HERO LETTERS
+       The floating letters live in <div class="letterfield">.
+       Each letter is one <span class="fl ...">:
+         --x / --y   position (percent of the hero)
+         --s         font size (vw units, scales with screen)
+         --r         rotation
+         data-depth  how strongly it follows the mouse
+       Classes: fl-outline (hollow), fl-ghost (faint fill),
+       fl-serif (italic serif), fl-anchor (the bold THEO letters).
+
+     EDIT THE MAP
+       Scroll down to the block marked  == MAP CONFIG ==  in the
+       <script> at the bottom. Add or remove country names from
+       the VISITED array. Names must match the world-atlas dataset
+       (e.g. "United States of America", not "USA";
+        "South Korea", not "Korea"). To check a country's exact
+       name: click it on the map — the readout prints it.
+
+     EDIT TERMINAL COMMANDS
+       Same script, block marked  == TERMINAL COMMANDS ==.
+       Each command is one entry: name → function returning a string.
+
+     CHANGE COLORS
+       Page colors are the CSS variables in :root below
+       (--paper, --ink, --clay). The colorful side-quest cards
+       set their own background inline in the HTML (search "q1").
+     ============================================================ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.24.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+
+<style>
+:root {
+  --paper: #F2EFE8;
+  --paper-2: #FAF8F2;
+  --ink: #141412;
+  --ink-2: #55524A;
+  --ink-3: #8B877C;
+  --rule: #141412;
+  --hairline: rgba(20,20,18,0.14);
+  --clay: #D85A30;
+  --clay-soft: #E8845C;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --serif: "Instrument Serif", Georgia, serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { background: var(--paper); color: var(--ink); font-family: var(--sans); line-height: 1.7; -webkit-font-smoothing: antialiased; }
+::selection { background: var(--ink); color: var(--paper); }
+a { color: inherit; }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---- fixed nav: one thin black rule ---- */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; backdrop-filter: blur(10px); background: rgba(242,239,232,0.82); border-bottom: 1px solid var(--rule); }
+.nav-inner { max-width: 1060px; margin: 0 auto; padding: 15px 28px; display: flex; justify-content: space-between; align-items: baseline; }
+.nav-mark { font-family: var(--serif); font-size: 21px; letter-spacing: 0.01em; text-decoration: none; cursor: pointer; user-select: none; }
+.nav-mark span { color: var(--clay); }
+.nav-links { display: flex; gap: 30px; }
+.nav-links a { font-size: 11px; font-weight: 500; color: var(--ink); text-decoration: none; text-transform: uppercase; letter-spacing: 0.14em; transition: color .25s; }
+.nav-links a b { font-weight: 400; color: var(--ink-3); margin-right: 5px; }
+.nav-links a:hover { color: var(--clay); }
+@media (max-width: 620px) { .nav-links { gap: 16px; } .nav-links a b { display: none; } }
+
+/* ============================================================
+   HERO — kinetic typography field
+   ============================================================ */
+.hero { position: relative; min-height: 100svh; overflow: hidden; border-bottom: 1px solid var(--rule); display: flex; align-items: flex-end; }
+.letterfield { position: absolute; inset: 0; z-index: 0; }
+.fl { position: absolute; left: var(--x); top: var(--y); font-size: var(--s); line-height: 0.9; user-select: none; cursor: default; will-change: transform; }
+.fl-in { display: block; transform: rotate(var(--r, 0deg)); animation: floaty var(--dur, 10s) ease-in-out var(--del, 0s) infinite; transition: color .35s, -webkit-text-stroke-color .35s; }
+@keyframes floaty {
+  0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); }
+  50%      { transform: rotate(var(--r, 0deg)) translateY(-16px); }
+}
+.fl-outline .fl-in { font-weight: 600; color: transparent; -webkit-text-stroke: 1.5px var(--ink); }
+.fl-ghost .fl-in { font-weight: 600; color: rgba(20,20,18,0.08); }
+.fl-serif .fl-in { font-family: var(--serif); font-style: italic; font-weight: 400; color: rgba(20,20,18,0.32); }
+.fl-anchor { z-index: 1; }
+.fl-anchor .fl-in { font-family: var(--serif); font-weight: 400; color: var(--ink); letter-spacing: -0.02em; }
+.fl:hover .fl-in { color: var(--clay); -webkit-text-stroke-color: var(--clay); }
+.fl-anchor:hover .fl-in { color: var(--clay); }
+@media (max-width: 700px) { .hide-m { display: none; } }
+
+.hero-fore { position: relative; z-index: 2; width: 100%; pointer-events: none; }
+.hero-fore a, .hero-fore .scroll-cue { pointer-events: auto; }
+.hero-bottom { max-width: 1060px; margin: 0 auto; padding: 0 28px 34px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.hero-id .kicker { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--clay); margin-bottom: 12px; }
+.hero-id .tagline { font-family: var(--serif); font-style: italic; font-size: clamp(26px, 3.6vw, 42px); line-height: 1.15; letter-spacing: -0.01em; max-width: 560px; }
+.hero-id .meta { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); margin-top: 14px; letter-spacing: 0.03em; }
+.scroll-cue { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink); text-decoration: none; white-space: nowrap; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+.scroll-cue:hover { color: var(--clay); border-color: var(--clay); }
+
+/* ---- scroll reveal ---- */
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s cubic-bezier(.16,1,.3,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .fl-in { animation: none !important; }
+}
+
+/* ============================================================
+   SECTIONS — Swiss rules, numbered headers, big serif titles
+   ============================================================ */
+section.block { position: relative; border-bottom: 1px solid var(--rule); padding: 96px 0 110px; overflow: hidden; }
+.bigletter { position: absolute; top: -0.08em; right: -0.05em; z-index: 0; font-family: var(--serif); font-size: 34vw; line-height: 1; font-weight: 400; color: transparent; -webkit-text-stroke: 1px rgba(20,20,18,0.09); user-select: none; pointer-events: none; }
+.sec-inner { position: relative; z-index: 1; }
+.sec-head { display: grid; grid-template-columns: 110px 1fr; gap: 18px; align-items: baseline; margin-bottom: 44px; }
+.sec-no { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; color: var(--ink); }
+.sec-no em { font-style: normal; color: var(--clay); }
+.sec-title { font-family: var(--serif); font-weight: 400; font-size: clamp(38px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -0.01em; }
+@media (max-width: 620px) { .sec-head { grid-template-columns: 1fr; gap: 8px; } }
+.about-copy { font-size: 17.5px; color: var(--ink-2); max-width: 640px; }
+.about-copy strong { color: var(--ink); font-weight: 600; }
+
+/* ---- business card: dark object on paper ---- */
+.card-zone { max-width: 470px; margin: 0 auto; }
+.card-hint { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; color: var(--ink-3); text-align: center; margin-bottom: 14px; text-transform: uppercase; }
+.bizcard { height: 252px; perspective: 1200px; cursor: pointer; }
+.flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .8s cubic-bezier(.3,.7,.3,1); }
+.bizcard.flipped .flip-inner { transform: rotateY(180deg); }
+.face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 6px; border: 1px solid var(--ink); box-shadow: 8px 8px 0 var(--ink); padding: 26px 28px; display: flex; flex-direction: column; justify-content: space-between; }
+.face.front { background: #1B1B19; color: #F1EFE8; }
+.face.back { background: var(--clay); color: #FFF3EC; transform: rotateY(180deg); }
+.face .row { display: flex; justify-content: space-between; align-items: flex-start; }
+.face .mono-sm { font-family: var(--mono); font-size: 11.5px; }
+.face .name { font-family: var(--serif); font-size: 30px; letter-spacing: 0; }
+.face .role { font-size: 13.5px; color: var(--clay-soft); margin-top: 6px; }
+.face .sub { font-size: 12.5px; color: #A8A69D; margin-top: 3px; }
+.face.back a { color: inherit; }
+.face.back .links { display: grid; gap: 10px; font-size: 14px; }
+.face.back .links i { margin-right: 9px; }
+
+/* ---- side quests: the colorful blocks ---- */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+.quest { display: block; text-decoration: none; color: var(--ink); border: 1px solid var(--ink); border-radius: 6px; padding: 24px 24px 20px; box-shadow: 5px 5px 0 var(--ink); transition: transform .25s cubic-bezier(.2,.7,.3,1), box-shadow .25s cubic-bezier(.2,.7,.3,1); }
+.quest:hover { transform: translate(-3px, -3px); box-shadow: 9px 9px 0 var(--ink); }
+.quest i { font-size: 24px; }
+.quest .t { font-weight: 600; font-size: 17px; margin: 12px 0 5px; letter-spacing: -0.01em; }
+.quest .d { font-size: 13.5px; margin-bottom: 14px; line-height: 1.6; }
+.quest .tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; border-top: 1px solid rgba(20,20,18,0.35); padding-top: 10px; display: block; }
+.quest.more { background: transparent; border-style: dashed; box-shadow: none; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--ink-2); }
+.quest.more:hover { transform: none; border-color: var(--clay); color: var(--clay); }
+.quest.more p { font-size: 13px; margin-top: 8px; }
+
+/* ---- map ---- */
+.map-lede { font-size: 16.5px; color: var(--ink-2); margin: -18px 0 30px; max-width: 620px; }
+.map-box { border: 1px solid var(--ink); border-radius: 6px; background: var(--paper-2); box-shadow: 8px 8px 0 var(--ink); padding: 14px; }
+.map-box svg { width: 100%; height: auto; display: block; }
+#worldmap path { cursor: pointer; transition: opacity .2s; }
+#worldmap path:hover { opacity: 0.7; }
+#map-out { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); margin: 8px 10px 4px; min-height: 22px; }
+#map-out .hit { color: var(--clay); }
+.map-note { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin-top: 16px; }
+
+/* ---- terminal: dark machine on paper ---- */
+.term { background: #171715; border: 1px solid var(--ink); border-radius: 6px; box-shadow: 8px 8px 0 var(--ink); overflow: hidden; }
+.term-bar { display: flex; align-items: center; gap: 7px; padding: 12px 18px; border-bottom: 1px solid rgba(241,239,232,0.12); }
+.dot { width: 11px; height: 11px; border-radius: 50%; }
+.term-title { font-family: var(--mono); font-size: 12px; color: #6E6D66; margin-left: 8px; }
+#term-log { padding: 18px 20px 4px; font-family: var(--mono); font-size: 13.5px; line-height: 1.85; color: #C9C7BE; min-height: 140px; max-height: 300px; overflow-y: auto; }
+#term-log a { color: var(--clay-soft); }
+.accent { color: var(--clay-soft); }
+.term-input { display: flex; align-items: center; padding: 4px 20px 18px; font-family: var(--mono); font-size: 13.5px; }
+.term-input span { color: var(--clay-soft); margin-right: 9px; }
+#term-in { flex: 1; background: transparent; border: none; outline: none; color: #F1EFE8; font-family: var(--mono); font-size: 13.5px; padding: 4px 0; }
+
+/* ============================================================
+   EPILOGUE — line-art portrait, draws itself on scroll
+   ============================================================ */
+.epilogue { border-bottom: 1px solid var(--rule); padding: 90px 0 70px; text-align: center; }
+.portrait { width: min(720px, 94%); margin: 0 auto; display: block; }
+.portrait path { fill: var(--ink); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+.portrait .draw { fill-opacity: 0; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.portrait.play .draw { animation: drawIn var(--dur, 1s) ease forwards, inkFill .5s ease forwards; animation-delay: var(--del, 0s), calc(var(--del, 0s) + var(--dur, 1s) * .6); }
+@keyframes drawIn { to { stroke-dashoffset: 0; } }
+@keyframes inkFill { to { fill-opacity: 1; } }
+.epi-caption { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-top: 22px; }
+.epi-caption em { font-style: normal; color: var(--clay); }
+@media (prefers-reduced-motion: reduce) {
+  .portrait .draw, .portrait.play .draw { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
+}
+
+footer { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.foot-inner { max-width: 1060px; margin: 0 auto; padding: 34px 28px 40px; display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+footer a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--hairline); }
+footer a:hover { color: var(--clay); border-color: var(--clay); }
+footer .fleuron { color: var(--clay); }
+</style>
+</head>
+<body id="top">
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-mark" href="#top">Theo<span>※</span></a>
+    <div class="nav-links">
+      <a href="#about"><b>01</b>About</a>
+      <a href="#quests"><b>02</b>Side quests</a>
+      <a href="#explored"><b>03</b>Explored</a>
+      <a href="#terminal"><b>04</b>Terminal</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================
+     HERO — deconstructed typographic poster.
+     The bold serif T · H · E · O letters anchor the field;
+     everything else is debris from the tagline, floating.
+     ============================================================ -->
+<header class="hero">
+  <h1 class="sr-only">Theo — counsel by day, builder by night</h1>
+  <div class="letterfield" aria-hidden="true">
+    <!-- anchored name -->
+    <span class="fl fl-anchor" data-depth="0.12" style="--x:5%;  --y:6%;"><span class="fl-in" style="--r:-4deg; --dur:13s; --del:-2s; font-size:clamp(120px,23vw,330px);">T</span></span>
+    <span class="fl fl-anchor" data-depth="0.09" style="--x:28%; --y:26%;"><span class="fl-in" style="--r:3deg; --dur:15s; --del:-6s; font-size:clamp(100px,19vw,275px);">H</span></span>
+    <span class="fl fl-anchor" data-depth="0.14" style="--x:54%; --y:7%;"><span class="fl-in" style="--r:-2deg; --dur:14s; --del:-9s; font-size:clamp(110px,21vw,300px);">E</span></span>
+    <span class="fl fl-anchor" data-depth="0.10" style="--x:76%; --y:30%;"><span class="fl-in" style="--r:5deg; --dur:16s; --del:-4s; font-size:clamp(100px,19vw,275px);">O</span></span>
+    <!-- debris: counsel by day, builder by night -->
+    <span class="fl fl-outline" data-depth="0.30" style="--x:44%; --y:2%;  --s:clamp(40px,7vw,100px);"><span class="fl-in" style="--r:12deg;  --dur:9s;  --del:-1s;">C</span></span>
+    <span class="fl fl-ghost hide-m" data-depth="0.22" style="--x:22%; --y:9%;  --s:clamp(56px,11vw,160px);"><span class="fl-in" style="--r:-9deg; --dur:12s; --del:-5s;">B</span></span>
+    <span class="fl fl-serif" data-depth="0.36" style="--x:88%; --y:9%;  --s:clamp(44px,8vw,115px);"><span class="fl-in" style="--r:14deg;  --dur:10s; --del:-3s;">y</span></span>
+    <span class="fl fl-outline hide-m" data-depth="0.26" style="--x:14%; --y:40%; --s:clamp(48px,9vw,130px);"><span class="fl-in" style="--r:8deg;  --dur:11s; --del:-7s;">U</span></span>
+    <span class="fl fl-serif" data-depth="0.32" style="--x:46%; --y:38%; --s:clamp(46px,8.5vw,120px);"><span class="fl-in" style="--r:-11deg; --dur:13s; --del:-2s;">n</span></span>
+    <span class="fl fl-ghost" data-depth="0.20" style="--x:68%; --y:14%; --s:clamp(60px,12vw,170px);"><span class="fl-in" style="--r:6deg;  --dur:14s; --del:-8s;">D</span></span>
+    <span class="fl fl-outline" data-depth="0.28" style="--x:90%; --y:52%; --s:clamp(42px,7.5vw,105px);"><span class="fl-in" style="--r:-13deg; --dur:9.5s; --del:-4s;">L</span></span>
+    <span class="fl fl-serif hide-m" data-depth="0.34" style="--x:3%;  --y:56%; --s:clamp(46px,8vw,115px);"><span class="fl-in" style="--r:10deg;  --dur:12s; --del:-6s;">g</span></span>
+    <span class="fl fl-ghost hide-m" data-depth="0.24" style="--x:36%; --y:56%; --s:clamp(52px,10vw,145px);"><span class="fl-in" style="--r:-6deg; --dur:15s; --del:-1s;">R</span></span>
+    <span class="fl fl-outline" data-depth="0.30" style="--x:60%; --y:52%; --s:clamp(40px,7vw,100px);"><span class="fl-in" style="--r:9deg;  --dur:10s; --del:-9s;">S</span></span>
+    <span class="fl fl-serif" data-depth="0.38" style="--x:26%; --y:73%; --s:clamp(38px,6.5vw,92px);"><span class="fl-in" style="--r:-8deg; --dur:11s; --del:-3s;">a</span></span>
+    <span class="fl fl-outline hide-m" data-depth="0.26" style="--x:71%; --y:70%; --s:clamp(44px,8vw,112px);"><span class="fl-in" style="--r:7deg;  --dur:13s; --del:-5s;">N</span></span>
+    <span class="fl fl-ghost" data-depth="0.40" style="--x:52%; --y:76%; --s:clamp(30px,5vw,70px);"><span class="fl-in" style="--r:-15deg; --dur:9s;  --del:-2s;">7</span></span>
+    <span class="fl" data-depth="0.44" style="--x:83%; --y:82%; --s:clamp(26px,4vw,54px); color:var(--clay);"><span class="fl-in" style="--r:0deg; --dur:8s; --del:-1s;">※</span></span>
+  </div>
+  <div class="hero-fore">
+    <div class="hero-bottom">
+      <div class="hero-id">
+        <p class="kicker">※ Who I am, essentially </p>
+        <p class="tagline">Counsel by day.<br>Builder by night.</p>
+        <p class="meta">in-house legal counsel × side-quest builder × podcaster × explorer</p>
+      </div>
+      <a class="scroll-cue" href="#card">Scroll ↓</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ---- 00 · the card ---- -->
+<section class="block" id="card">
+  <div class="sec-inner reveal">
+    <div class="card-zone">
+      <p class="card-hint">[ digital business card — click to flip ]</p>
+      <div class="bizcard" id="bizcard">
+        <div class="flip-inner">
+          <div class="face front">
+            <div class="row">
+              <span style="font-family: var(--serif); font-size: 22px;">Theo<span class="accent">※</span></span>
+              <span class="mono-sm" style="color: #6E6D66;">no. 001</span>
+            </div>
+            <div>
+              <p class="name">Theo</p>
+              <p class="role">Legal counsel × builder × podcaster × explorer</p>
+              <p class="sub">In-house at a multinational tech company</p>
+            </div>
+          </div>
+          <div class="face back">
+            <p class="mono-sm">// reach me on a side quest</p>
+            <div class="links">
+              <span><i class="ti ti-brand-github"></i><a href="https://github.com/arashi1103">github.com/arashi1103</a></span>
+              <span><i class="ti ti-mail"></i>theopangg@gmail.com</span>
+              <span><i class="ti ti-brand-instagram"></i><a href="https://www.instagram.com/maybe_mei6bit1/">@maybe_mei6bit1</a></span>
+              <span><i class="ti ti-map-pin"></i>Hong Kong</span>
+            </div>
+            <p class="mono-sm" style="opacity: 0.85;">contracts reviewed · commits pushed · mics tested · borders crossed</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---- 01 · about ---- -->
+<section class="block" id="about">
+  <span class="bigletter" aria-hidden="true">A</span>
+  <div class="sec-inner reveal">
+    <div class="sec-head">
+      <p class="sec-no"><em>01</em> / ABOUT</p>
+      <h2 class="sec-title">Two careers,<br>one keyboard</h2>
+    </div>
+    <p class="about-copy">The main quest is <strong>law</strong> — in-house counsel at a multinational tech company, where contracts meet code. The side quests are where the <strong>building</strong> happens: small, useful things for real life in Hong Kong, shipped for the joy of shipping. And underneath both: an explorer's default setting — new places, new tools, new ideas, always open to whatever hasn't been tried yet. The passport and the browser tabs are equally full.</p>
+  </div>
+</section>
+
+<!-- ---- 02 · side quests ---- -->
+<section class="block" id="quests">
+  <span class="bigletter" aria-hidden="true">Q</span>
+  <div class="sec-inner reveal">
+    <div class="sec-head">
+      <p class="sec-no"><em>02</em> / SIDE QUESTS</p>
+      <h2 class="sec-title">Things that<br>got shipped</h2>
+    </div>
+    <div class="grid">
+      <a class="quest q1" style="background: #E8623C;" href="https://github.com/arashi1103/weekend">
+        <i class="ti ti-map-2"></i>
+        <p class="t">weekend</p>
+        <p class="d">Weekend getaways in HK — where to escape when Friday hits.</p>
+        <span class="tag">HTML · ★ 1</span>
+      </a>
+      <a class="quest q2" style="background: #7CA9F2;" href="https://github.com/arashi1103/hkparking">
+        <i class="ti ti-car"></i>
+        <p class="t">hkparking</p>
+        <p class="d">Save your time on the road — parking, minus the circling.</p>
+        <span class="tag">HTML · ★ 0</span>
+      </a>
+      <a class="quest q3" style="background: #F2C14E;" href="https://www.instagram.com/maybe_mei6bit1/">
+        <i class="ti ti-microphone"></i>
+        <p class="t">maybe_mei6bit1</p>
+        <p class="d">The podcast. Updated "from time to time" — a legally precise term meaning whenever inspiration and free time achieve a quorum.</p>
+        <span class="tag">Podcast · on Instagram</span>
+      </a>
+      <a class="quest more" href="https://github.com/arashi1103">
+        <i class="ti ti-plus"></i>
+        <p>More quests loading…<br>follow along on GitHub</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ---- 03 · explored ---- -->
+<section class="block" id="explored">
+  <span class="bigletter" aria-hidden="true">E</span>
+  <div class="sec-inner reveal">
+    <div class="sec-head">
+      <p class="sec-no"><em>03</em> / EXPLORED</p>
+      <h2 class="sec-title">Where the passport<br>has been</h2>
+    </div>
+    <p class="map-lede">The clay-colored bits are stamped. All seven continents have at least one — yes, including the frozen one at the bottom. Click around.</p>
+    <div class="map-box">
+      <div id="worldmap"></div>
+      <p id="map-out">yes, even antarctica. click around.</p>
+    </div>
+    <p class="map-note">* many others are on the list too — it's just too small for this map. story of most passports *wink*.</p>
+  </div>
+</section>
+
+<!-- ---- 04 · terminal ---- -->
+<section class="block" id="terminal" style="border-bottom: none;">
+  <span class="bigletter" aria-hidden="true">T</span>
+  <div class="sec-inner reveal">
+    <div class="sec-head">
+      <p class="sec-no"><em>04</em> / TERMINAL</p>
+      <h2 class="sec-title">Talk to the site</h2>
+    </div>
+    <div class="term">
+      <div class="term-bar">
+        <span class="dot" style="background: #E24B4A;"></span>
+        <span class="dot" style="background: #EF9F27;"></span>
+        <span class="dot" style="background: #97C459;"></span>
+        <span class="term-title">theo@sidequests: ~</span>
+      </div>
+      <div id="term-log">
+        <div style="color: #6E6D66;">Welcome. Type <span class="accent">help</span> to see what this thing can do.</div>
+      </div>
+      <div class="term-input">
+        <span>$</span>
+        <input id="term-in" aria-label="Terminal command input" autocomplete="off" spellcheck="false" placeholder="whoami">
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<!-- ============================================================
+     EPILOGUE — the line-art portrait. These paths are an exact
+     vector trace of the reference illustration (girl with a bob,
+     typing on a laptop, coffee on a saucer beside her). Each path
+     outlines itself, then fills with ink, when scrolled into view.
+     --del = start delay, --dur = how long that piece takes.
+     ============================================================ -->
+<section class="epilogue">
+  <svg class="portrait" id="portrait" viewBox="25 155 950 750" role="img" aria-label="Minimalist line drawing of a girl with a bob haircut seen from behind, typing on a laptop with a cup of coffee on a saucer beside her">
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:0.0s; --dur:0.35s" d="M46.5 802 40 801 36.5 797.5 35.5 773 37.5 773.5 38 796 43 800 247 800 284 800 284 802 257.5 802.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:0.19s; --dur:1.08s" d="M229 651.5 209.5 656.5 186 657.5 167 655.5 149 649.5 149 654 152 657 153.5 669.5 160.5 692 173.5 710 179.5 713 189 714.5 205 714 219 710 227.5 698.5 236 679 239 665 240.5 645 242 645.5 241.5 663 238.5 678 233.5 690.5 259.5 697 251 693 236 690.5 236 689 244.5 690 258.5 694.5 251.5 632 253 592.5 155 593.5 39.5 768.5 48 770 277.5 771 278 773 40 771.5 37.5 770 39.5 763.5 131 625.5 154 591.5 253 590.5 260 555.5 271.5 536 282.5 526 293.5 520 326 513 324 515.5 294.5 522 281 530 271 540 263.5 553 260.5 562 254 604.5 254 637 258.5 680.5 262 699 266.5 702.5 268 706 266 717 282 774.5 292 820.5 302 887 302.5 893 300.5 893.5 287.5 809 264 717 254 725 233 734 211 738 178.5 738.5 160 736.5 140 731 127 724 119.5 713.5 120 707.5 124 702.5 133.5 697 144 694.5 131.5 686.5 125 677 123.5 664.5 126 658.5 130.5 654.5 137.5 652.5 147 653 147 649 150 647 163.5 652.5 181 655 207 654.5 227.5 650 222 649.5 216.5 652.5 204 654 170 652 149.5 645.5 147.5 640 152 635.5 162 631 182 627.5 207.5 627 220 628.5 237 634.5 241.5 639.5 241 644.5 238 647.5ZM178.5 731 202.5 731 234.5 727 259.5 718 263 715 263 712.5 259.5 699.5 246 694.5 232.5 692.5 225.5 704.5 229 708 229 712.5 224.5 716.5 208 721 183.5 721.5 165.5 716.5 161.5 713 161.5 709 163 709 163.5 712.5 166 714.5 177.5 718.5 203.5 719.5 213 718 225 714 227.5 711 226 707 224.5 706.5 219.5 712 211 715 202 716.5 183.5 716 175 713.5 165 702.5 165 704.5 163 705 160 700 149.5 695.5 138 697.5 128 702 122.5 707 121.5 713.5 127 719.5 140.5 725.5 156 729ZM221 643 205 640 179 640.5 162 644 158.5 646.5 163 648 185 651.5 210.5 651.5 223.5 647 224 644.5ZM146 660.5 148 662 147.5 655.5 146 655 135.5 655 130.5 657 126 663 125.5 672 127.5 678 133.5 685.5 139 689.5 149.5 693.5 158 697 158 693.5 138.5 683.5 133.5 678.5 130.5 672 130.5 666 133.5 661 139 659ZM135.5 725.5 130.5 724 140 729 149 732 177 736.5 215.5 735.5 233 732 243 728 250 725 249.5 724 236.5 728.5 215 732 174.5 733 153.5 730.5ZM169.5 633 191.5 630.5 224.5 633 233 636 236.5 639.5 237 643.5 233 648 239 643.5 239.5 640.5 235.5 636 226.5 632.5 206.5 629 174.5 630.5 153.5 637 149.5 640.5 149.5 642.5 152.5 644.5 152.5 639.5 155 637ZM152 673 150 657.5 148.5 656.5 150 666.5ZM208.5 638.5 224 642 226.5 645 226 648 233 645.5 235.5 642 233 638.5 224 635 211 633 185 633.5 169.5 635 157 638.5 154.5 640.5 155.5 645.5 161.5 642 173.5 639ZM139.5 681.5 148 687 155.5 689 148.5 669 147.5 664.5 144.5 662 137 661.5 134 663.5 132.5 667 133 673ZM264.5 710 265 711.5 266 710 264.5 704 263 702.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:0.79s; --dur:2.2s" d="M651 783.5 658 761.5 666 753.5 667.5 744 668 727 662.5 707 663 696.5 622.5 687.5 620 687 620 688.5 623 706 634.5 757 648.5 798ZM705 443.5 711 438 723.5 437.5 939 457 948.5 462 950.5 472 923.5 645.5 921.5 650 916.5 652.5 916 660.5 911 666 831.5 726 823 730 811 730.5 746 715.5 739 728 724.5 746 721 765 719 766 719 757.5 723.5 743.5 739.5 723.5 755.5 692.5 768.5 679 769.5 669.5 767 667.5 749.5 682.5 744 683.5 744 675.5 752.5 661 751 654.5 747 652.5 743.5 653 734 667 730 670 729.5 664.5 736 653 735.5 648 732.5 645 727 644.5 724.5 646 710.5 663 709 662.5 710.5 658 709.5 654 705.5 651 699.5 651.5 687.5 665.5 677.5 690.5 674.5 690 674.5 685 681.5 669.5 679 665.5 675.5 666.5 672 680.5 665.5 695 664.5 706.5 670 727.5 668 753 675.5 750.5 694 752 706.5 757.5 718 767.5 722.5 777 722.5 789 719.5 805 945 803 960 803 960.5 805 719 807 712 861 702.5 894 700.5 892.5 710 859 716.5 805 720 789.5 720.5 779.5 719 773 710 762.5 697.5 755.5 687 752.5 675.5 752.5 667 755.5 662 773.5 654.5 793 651 798 651 804 665 841.5 665.5 850 664.5 851.5 661.5 851 653 831.5 649.5 815.5 649 804 630.5 751.5 617.5 684 608.5 650 601 628.5 593.5 613 578.5 594 556 580.5 511.5 565.5 484 549.5 481 551 454 552.5 394 561 370.5 559.5 349 555.5 331.5 548 321.5 540 318 532.5 318 526 320 523 330.5 512.5 344 505.5 355.5 494 368 474 372 460.5 349 453 331.5 443 319 431 300.5 406 293 388.5 290.5 374 291.5 349.5 298 321 307.5 301 352 232 368 211.5 383.5 196.5 406.5 180.5 424 172.5 444 167 475.5 165 503 169 531 178.5 561 196 581.5 213 627.5 258 642 284.5 648 309.5 647 330.5 639.5 349.5 626 364.5 619 368.5 609.5 370 607.5 373 602 383 602 387.5 606.5 391 611.5 391.5 611 394 604 394.5 596.5 391 595.5 413 599 435.5 596 439.5 586.5 443 577 463 562 482 553 502 545.5 508 534.5 509 517 503 498.5 493.5 492 493.5 487 501.5 483 513 480 530 480.5 544.5 514.5 564.5 554.5 577.5 579 591.5 590.5 604 601 623 611 650.5 619 680 665.5 690.5 675.5 663.5 680.5 664 684 669 691 657 700.5 649 706 649 710 651 711.5 654 711 660 721 647 726.5 642.5 734 643.5 738 648.5 738 654 731 667 742.5 651 749.5 651 754 655.5 754.5 661.5 751 668 759 669 760 670.5 749.5 669.5 745 681.5 749.5 680 767 665.5 770 666 771.5 673 773.5 672 803.5 678.5 805 678.5 806 674.5 813 674.5 821 678.5 826.5 672.5 856 677 881.5 657.5 881 655 689 619.5 684 619.5 678.5 622.5 678 624 680.5 626.5 680.5 628.5 678.5 629 673.5 622 652 608.5 641.5 609 626 614.5 622.5 614 622.5 612 626 609.5 625 609 602 622 601.5 619.5 617 610.5 633.5 604.5 638.5 605.5 639 607.5 652.5 606.5 665.5 614 669.5 610.5 680.5 606.5 679.5 597.5 681 591 579.5 591.5 580 589.5 681.5 589 701.5 455ZM757.5 694 751.5 703.5 750.5 709 808 722 823.5 722 831 718.5 909.5 657.5 913.5 654 914 651 888.5 645.5 882 647.5 873.5 647.5 717 619 705.5 616.5 704 611 690 608.5 679.5 608.5 672 611.5 667.5 615.5 676 622 683.5 617.5 692.5 618.5 882 653 884 654.5 884 657.5 856.5 679 851.5 679.5 827.5 675 846 683 848 686.5 885.5 657 887.5 657 885.5 660.5 849.5 688.5 842.5 689 772 674 770 680.5ZM585 359.5 594 351 600.5 341 605 329.5 607.5 316.5 597.5 333.5 583 349 570.5 358 558 363.5 545 364.5 543 361.5 543 346.5 541 341.5 535.5 338 528 338.5 518 346 513 355 509 371 508.5 392.5 506 392.5 506.5 372 510 356 517.5 343 527 336.5 536.5 336 542.5 340 545 346 546 362.5 561 360 575.5 352 587.5 341.5 596 331.5 607.5 309.5 609.5 308.5 609.5 320.5 604.5 338 597 351 584.5 363 598 362 606 358.5 615 350 619.5 340.5 622 340 619 357 612 367 617.5 366.5 626 361.5 632.5 355 642 339 645.5 325 645.5 308 642.5 293.5 634.5 274 618.5 251 605 240 572 207.5 551.5 192.5 527.5 179.5 499 170.5 478 167.5 458 167.5 435 171.5 409 182 393.5 192.5 370 213 348.5 241.5 307.5 306 300.5 321.5 295 342.5 293 358 294 382.5 299 398 308.5 414 320 429 334.5 442.5 352.5 452 370 456.5 374 460 370 475 357.5 495 345 507.5 328 517.5 322 523 320 530.5 325.5 541 332.5 546 347 552.5 383.5 558.5 403.5 558 455 550 482 548.5 477.5 542 478.5 525 484 503 491 491.5 495.5 490.5 501 492 520 502 533.5 506.5 540 507 548.5 503.5 552.5 498.5 560 481 574 463.5 585 442.5 592.5 419 592.5 400.5 595 388 602 391 599.5 387 600.5 381 607.5 370 607 367.5 613 363 618 352.5 618 349 609 359.5 598 364.5 583 365.5 581 363ZM654 826 662 848 663 844 660.5 834.5 652 812ZM758.5 619 909 646.5 915.5 650.5 919.5 649 922 641.5 948 474 948 466.5 945.5 462 940.5 459.5 887 455 721 439.5 712 440 707 443.5 704.5 450.5 687 562.5 681.5 599 682 605ZM742.5 621 874 645.5 881.5 645.5 883.5 644 846 637.5 707.5 612 706 614 708 615ZM590 435.5 588 440.5 596.5 435.5 596 427 594 419ZM628.5 641.5 623 647.5 626 649 633 648.5 640.5 646.5 640 643.5 647.5 638.5 656 633.5 646 634 637 636ZM628 610.5 625.5 612.5 635 609 637 607 631.5 607ZM836.5 719 908.5 665.5 914 660 914.5 656 913 656.5 851 705.5 832.5 720 822 724.5 807.5 724 748.5 710.5 748.5 714 814 729 824.5 727.5ZM662.5 765.5 665 757 661 760.5 653 784.5 652 794ZM840 683 833.5 684 839.5 686 845.5 687 844.5 684.5ZM672 640.5 658 634.5 645 642 642 644.5 643 645.5 649 643.5 659.5 643.5 665 645.5 667 648.5 666 653.5 657.5 659 639 663 620 672.5 617.5 672.5 618 670.5 637 661.5 658 656.5 665 651.5 664.5 648 659.5 645.5 649.5 645.5 629 651 622.5 650 621.5 646 623 643 633 635.5 648.5 631.5 658 631.5 679.5 641 684 641 687 639 676.5 630 660.5 621.5 648.5 619.5 627 619 629 617 655.5 618 668 622.5 682.5 631.5 689 637.5 689 640 684 643 678.5 643ZM830 678.5 824.5 676.5 820.5 682 825.5 682.5 832.5 684 835 682 835 679.5ZM645.5 690.5 661.5 694.5 664 694.5 664 692 637.5 686 620 682 620 685 623 684.5ZM817 678 812 676.5 807 676.5 808 678 812.5 679.5 817 679.5ZM679 680.5 678 684.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:2.0s; --dur:0.35s" d="M534.5 368.5 525 375 522 380.5 522.5 385 528 394.5 526.5 409.5 522 416 515 416 511 410.5 507.5 398 506 425.5 509.5 441 515.5 452 524 460 539.5 465 539 468.5 528 473 510 472 498 466 486.5 455 491.5 464 502.5 472 503.5 475.5 494.5 479.5 476 481 446 475.5 398.5 460.5 379.5 459 379 457 381.5 456.5 391 457 413 462.5 461 477 471.5 478.5 491.5 478 501 474 494 469.5 487 461.5 482 450 481.5 447 483.5 446 493 459 508 469 526.5 471 536.5 467.5 523 462 513 452.5 506 437.5 503.5 422.5 504 405.5 507 394.5 510.5 397 512.5 407.5 515.5 413.5 520 414.5 524.5 408 525 392.5 522.5 388.5 516.5 386.5 514.5 382 516.5 366.5 522.5 352.5 529.5 345.5 534.5 345.5 537.5 347.5 539 356.5 537.5 364ZM518.5 370 517 383 521 387 520 379 521.5 375.5 534.5 365 536.5 350.5 535.5 348.5 531 347.5 527 350 523 356Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:2.19s; --dur:0.35s" d="M559.5 882 540 843.5 519 778 508 756.5 504.5 755 508 771.5 532 824.5 555.5 883 556 886 554.5 886.5 548 870.5 527 818 506 772.5 502.5 760.5 502.5 754 504 752.5 507.5 753 514.5 762.5 521.5 778.5 544 847 567.5 892.5 565.5 894Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:2.38s; --dur:0.35s" d="M672 654 667.5 653.5 667.5 651.5 670 651.5 686 655 690 656 688.5 658Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:2.58s; --dur:0.35s" d="M708.5 596 908 630 910 625.5 934.5 478.5 933 474 716 454 693.5 589 693.5 592.5 695.5 594ZM922 567 912 627 911 630 907 632.5 694.5 596 691.5 593 691.5 588.5 705 503.5 712.5 455 715.5 451.5 816 461 820 461 818.5 455 820.5 452.5 823 452.5 825.5 454.5 825.5 458 823 461.5 933.5 472 936.5 475 936.5 479.5ZM821.5 459 823.5 457 822.5 455 821 455Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:2.77s; --dur:0.35s" d="M721.5 486 708 576 706.5 585 705 586 705 583 708.5 564 722.5 469 723.5 464 725 465.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:2.96s; --dur:0.35s" d="M958.5 775.5 722.5 776.5 723 774.5 726 774.5 961.5 773.5 961.5 775.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:3.15s; --dur:0.35s" d="M730 466.5 729.5 465 744 466.5 745 468Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:3.35s; --dur:0.35s" d="M751 525.5 755 527 750.5 527 734 524.5 730 524 733.5 523Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:3.54s; --dur:0.35s" d="M754 477.5 758 478 754 479 735.5 476.5 731.5 476.5 731.5 475 735 475Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:3.73s; --dur:0.35s" d="M738.5 500.5 737 499.5 741.5 499.5 759.5 502 760.5 503.5 758.5 503.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:3.92s; --dur:0.35s" d="M773.5 487.5 804.5 490.5 807 492 772.5 489 739 484.5Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:4.12s; --dur:0.35s" d="M772 495.5 784.5 497 786 498.5 781 498.5 755.5 495 742 493.5 742 492 744 492Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:4.31s; --dur:0.35s" d="M803.5 537 766 567.5 762.5 568.5 808.5 531 843 504.5 849.5 500 850.5 501Z"/>
+    <path class="draw" pathLength="1" fill-rule="evenodd" style="--del:4.5s; --dur:0.35s" d="M797.5 549 835 527 837 528 836 531.5 825.5 547 824.5 545 827.5 540.5 834 532.5 835 528.5 800 549.5 789.5 553.5 789.5 552Z"/>
+  </svg>
+  <p class="epi-caption">fig. 01 — coffee, keyboard, repeat <em>※</em> the nightly loop</p>
+</section>
+
+<footer>
+  <div class="foot-inner">
+    <span>© 2026 Theo <span class="fleuron">※</span> built as a side quest, naturally</span>
+    <span>
+      <a href="https://github.com/arashi1103">GitHub</a> ·
+      <a href="https://www.instagram.com/maybe_mei6bit1/">Podcast</a> ·
+      <a href="mailto:theopangg@gmail.com">Email</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+(function() {
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- scroll reveal ---- */
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(function(el) { obs.observe(el); });
+
+  /* ---- hero: letters drift with the mouse, each at its own depth ---- */
+  var letters = document.querySelectorAll('.fl');
+  if (!reduced && window.matchMedia('(pointer: fine)').matches) {
+    var ticking = false, mx = 0, my = 0;
+    window.addEventListener('mousemove', function(e) {
+      mx = e.clientX / window.innerWidth - 0.5;
+      my = e.clientY / window.innerHeight - 0.5;
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(function() {
+          letters.forEach(function(l) {
+            var d = parseFloat(l.dataset.depth || 0) * 140;
+            l.style.transform = 'translate(' + (mx * d).toFixed(1) + 'px,' + (my * d).toFixed(1) + 'px)';
+          });
+          ticking = false;
+        });
+      }
+    });
+  }
+
+  /* ---- epilogue: start drawing when it scrolls into view ---- */
+  var portrait = document.getElementById('portrait');
+  var pObs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) { if (e.isIntersecting) { portrait.classList.add('play'); pObs.unobserve(portrait); } });
+  }, { threshold: 0.35 });
+  pObs.observe(portrait);
+
+  /* ---- business card flip ---- */
+  var card = document.getElementById('bizcard');
+  card.addEventListener('click', function() { card.classList.toggle('flipped'); });
+
+  /* ============================================================
+     == MAP CONFIG ==
+     Add or remove countries here. Names must match the
+     world-atlas dataset exactly. Not sure of a name? Click the
+     country on the map — the readout below it prints the name.
+     Common gotchas:
+       "United States of America"  (not USA)
+       "United Kingdom"            (not UK / Britain)
+       "South Korea" / "North Korea"
+       "Myanmar"                   (not Burma)
+     Tiny states (Monaco, Vatican, Singapore at this zoom) are
+     not in the 110m dataset — mention them in the footnote.
+     ============================================================ */
+  var VISITED = [
+    'Argentina', 'Antarctica', 'United States of America', 'United Kingdom',
+    'Spain', 'Germany', 'Japan', 'Russia', 'India', 'Australia',
+    'South Africa', 'Morocco', 'Greece', 'Portugal', 'France', 'Italy',
+    'Switzerland', 'Belgium', 'Netherlands', 'Luxembourg', 'Myanmar',
+    'Monaco', 'Malaysia', 'Nepal', 'Thailand', 'Vietnam',
+    'China', 'Singapore', 'Canada', 'South Korea', 'Taiwan',
+    'Austria', 'Czechia', 'Hungary'
+  ];
+  var VISITED_COLOR = '#D85A30';   /* clay fill for stamped countries */
+  var LAND_COLOR    = '#E2DCCD';   /* everything not yet visited */
+  var BORDER_COLOR  = '#FAF8F2';   /* country borders (paper) */
+
+  var mapOut = document.getElementById('map-out');
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(function(r) { return r.json(); })
+    .then(function(world) {
+      var countries = topojson.feature(world, world.objects.countries).features;
+      var w = 720, h = 390;
+      var proj = d3.geoNaturalEarth1().fitSize([w, h], { type: 'FeatureCollection', features: countries });
+      var geoPath = d3.geoPath(proj);
+      var svg = d3.select('#worldmap').append('svg')
+        .attr('viewBox', '0 0 ' + w + ' ' + h)
+        .attr('role', 'img');
+      svg.append('title').text('World map highlighting the countries Theo has visited across all seven continents');
+      svg.selectAll('path').data(countries).enter().append('path')
+        .attr('d', geoPath)
+        .attr('fill', function(d) { return VISITED.indexOf(d.properties.name) > -1 ? VISITED_COLOR : LAND_COLOR; })
+        .attr('stroke', BORDER_COLOR)
+        .attr('stroke-width', 0.5)
+        .on('click', function(ev, d) {
+          var name = d.properties.name;
+          if (VISITED.indexOf(name) > -1) {
+            mapOut.innerHTML = '<span class="hit">✓ ' + name + '</span> — stamped.';
+          } else {
+            mapOut.textContent = name + ' — not yet. open to ideas (and flights).';
+          }
+        });
+    })
+    .catch(function() {
+      mapOut.textContent = 'map failed to load — but trust me, all seven continents are on it.';
+    });
+
+  /* ---- monogram easter egg (click the nav mark 7 times) ---- */
+  var mark = document.querySelector('.nav-mark');
+  var clicks = 0;
+  mark.addEventListener('click', function() {
+    clicks++;
+    if (clicks === 7) {
+      print('<span class="accent">achievement unlocked:</span> you clicked the mark 7 times. curiosity confirmed. try <span class="accent">sudo</span> below.');
+      document.getElementById('terminal').scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
+  /* ============================================================
+     == TERMINAL COMMANDS ==
+     Each entry: 'commandname': function returning an HTML string
+     (or null for no output). Add your own — e.g.
+       nowplaying: function() { return 'lo-fi, obviously.'; },
+     ============================================================ */
+  var log = document.getElementById('term-log');
+  var input = document.getElementById('term-in');
+  function print(html) {
+    var d = document.createElement('div');
+    d.innerHTML = html;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  }
+  var cmds = {
+    help: function() { return 'commands: <span class="accent">whoami · projects · podcast · travel · contact · cv · stack · ls · coffee · clear</span> — and a few undocumented ones.'; },
+    whoami: function() { return 'Theo. In-house legal counsel at a multinational tech company by day. Builder of small, useful things by night. Occasionally a podcaster. Perpetually an explorer.'; },
+    travel: function() { return 'all seven continents — yes, antarctica counts, the penguins can confirm. next destination: wherever curiosity books first.'; },
+    projects: function() { return 'weekend — HK getaway planner · hkparking — beat the parking hunt · maybe_mei6bit1 — the podcast · more at <a href="https://github.com/arashi1103">github.com/arashi1103</a>'; },
+    podcast: function() { return '<a href="https://www.instagram.com/maybe_mei6bit1/">@maybe_mei6bit1</a> — release schedule: "from time to time". lawyers call this a best-efforts obligation, not a guarantee.'; },
+    contact: function() { return 'github: <a href="https://github.com/arashi1103">arashi1103</a> · mail: theopangg@gmail.com · podcast: <a href="https://www.instagram.com/maybe_mei6bit1/">@maybe_mei6bit1</a> · location: Hong Kong'; },
+    cv: function() { return '[REDACTED]. this is not that kind of website. the short version: law degree, tech obsession, one keyboard shared between both.'; },
+    stack: function() { return 'daily drivers: contracts, HTML, curiosity, Claude Code. debugging tool of choice: a long walk.'; },
+    ls: function() { return 'main-quest/  side-quests/  podcast/  passport-stamps/  drafts/  ideas-at-2am/  README.md'; },
+    coffee: function() { return 'brewing… done. productivity +20%. legal review speed unaffected (quality assured).'; },
+    clear: function() { log.innerHTML = ''; return null; },
+    pwd: function() { return '/users/theo/side-quests'; },
+    date: function() { return new Date().toString(); },
+    hello: function() { return 'hey. type help if you are lost, or just poke around.'; },
+    hi: function() { return 'hey. type help if you are lost, or just poke around.'; }
+  };
+  input.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var raw = input.value.trim();
+    input.value = '';
+    if (!raw) return;
+    print('<span class="accent">$</span> ' + raw.replace(/</g, '&lt;'));
+    var cmd = raw.toLowerCase();
+    if (cmd.indexOf('sudo') === 0) {
+      print('permission denied. even lawyers respect access controls. (nice try though — that is the spirit.)');
+    } else if (cmd.indexOf('rm ') === 0 || cmd === 'rm') {
+      print('deletion request received. escalating to legal. expected turnaround: never.');
+    } else if (cmd === 'exit' || cmd === 'quit') {
+      print('there is no exit. only more side quests.');
+    } else if (cmd === 'konami' || cmd === 'up up down down') {
+      print('close. but this terminal predates cheat codes. it only accepts billable hours.');
+    } else if (cmds[cmd]) {
+      var out = cmds[cmd]();
+      if (out) print(out);
+    } else {
+      print('command not found: ' + cmd.replace(/</g, '&lt;') + ' — type <span class="accent">help</span>');
+    }
+  });
+})();
+</script>
+</body>
+</html>
